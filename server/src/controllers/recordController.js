@@ -122,8 +122,24 @@ export async function updateExistingRecord(req, res, next) {
 export async function deleteExistingRecord(req, res, next) {
   try {
     const { id } = req.params;
-    await prisma.fieldRecord.delete({ where: { id } });
-    res.json({ message: 'Record deleted successfully' });
+
+    const existingRecord = await prisma.fieldRecord.findUnique({
+      where: { id }
+    });
+
+    if (!existingRecord) {
+      return res.status(200).json({
+        message: 'Record already deleted or not found'
+      });
+    }
+
+    await prisma.fieldRecord.delete({
+      where: { id }
+    });
+
+    res.json({
+      message: 'Record deleted successfully'
+    });
   } catch (error) {
     next(error);
   }

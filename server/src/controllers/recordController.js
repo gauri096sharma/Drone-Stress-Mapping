@@ -5,8 +5,11 @@ import { validateRecordPayload } from '../utils/validateRecord.js';
 export async function getRecords(req, res, next) {
   try {
     const records = await prisma.fieldRecord.findMany({
-      orderBy: { capturedAt: 'desc' }
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
+
     res.json(records);
   } catch (error) {
     next(error);

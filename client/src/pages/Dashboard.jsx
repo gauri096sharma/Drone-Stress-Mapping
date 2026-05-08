@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { getAnalytics, getRecords } from '../api/api';
+import { getRecords } from '../api/api';
 import StatCard from '../components/StatCard';
 import AlertPanel from '../components/AlertPanel';
 
 export default function Dashboard() {
-  const [analytics, setAnalytics] = useState(null);
   const [records, setRecords] = useState([]);
   const [error, setError] = useState('');
 
@@ -15,13 +14,27 @@ export default function Dashboard() {
 
   async function loadData() {
     try {
-      const [analyticsRes, recordsRes] = await Promise.all([getAnalytics(), getRecords()]);
-      setAnalytics(analyticsRes.data);
-      setRecords(recordsRes.data);
+      setError('');
+      const recordsRes = await getRecords();
+      setRecords(recordsRes.data || []);
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to load dashboard data');
     }
   }
+
+  const totalRecords = records.length;
+
+  const averageHealth =
+    totalRecords > 0
+      ? Math.round(records.reduce((sum, item) => sum + Number(item.healthScore || 0), 0) / totalRecords)
+      : 0;
+
+  const averageMoisture =
+    totalRecords > 0
+      ? Math.round(records.reduce((sum, item) => sum + Number(item.moisture || 0), 0) / totalRecords)
+      : 0;
+
+  const criticalZones = records.filter((item) => item.status === 'Critical').length;
 
   const chartData = records.slice(0, 10).reverse().map((item, index) => ({
     name: `M${index + 1}`,
@@ -41,13 +54,17 @@ export default function Dashboard() {
         </p>
       </section>
 
-      {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      {error && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total Records" value={analytics?.totalRecords || 0} subtitle="Stored in PostgreSQL" />
-        <StatCard title="Average Health" value={`${analytics?.averageHealth || 0}%`} subtitle="Computed from current dataset" />
-        <StatCard title="Average Moisture" value={`${analytics?.averageMoisture || 0}%`} subtitle="Derived from mission packets" />
-        <StatCard title="Critical Zones" value={analytics?.criticalZones || 0} subtitle="Immediate intervention needed" />
+        <StatCard title="Total Records" value={totalRecords} subtitle="Stored in PostgreSQL" />
+        <StatCard title="Average Health" value={`${averageHealth}%`} subtitle="Computed from current dataset" />
+        <StatCard title="Average Moisture" value={`${averageMoisture}%`} subtitle="Derived from mission packets" />
+        <StatCard title="Critical Zones" value={criticalZones} subtitle="Immediate intervention needed" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">

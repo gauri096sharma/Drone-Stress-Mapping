@@ -1,24 +1,31 @@
 import { useEffect, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { getRecords } from '../api/api';
+import { useAuth } from '../context/AuthContext';
 import StatCard from '../components/StatCard';
 import AlertPanel from '../components/AlertPanel';
 
 export default function Dashboard() {
+  const { user } = useAuth();
+
   const [records, setRecords] = useState([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (user?.id) {
+      loadData();
+    }
+  }, [user]);
 
   async function loadData() {
     try {
       setError('');
-      const recordsRes = await getRecords();
-      setRecords(recordsRes.data || []);
+
+      const recordsRes = await getRecords(user.id);
+      setRecords(Array.isArray(recordsRes.data) ? recordsRes.data : []);
     } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to load dashboard data');
+      console.error('Dashboard error:', err);
+      setError('Failed to load dashboard data');
     }
   }
 
@@ -38,8 +45,8 @@ export default function Dashboard() {
 
   const chartData = records.slice(0, 10).reverse().map((item, index) => ({
     name: `M${index + 1}`,
-    health: item.healthScore,
-    moisture: item.moisture
+    health: Number(item.healthScore || 0),
+    moisture: Number(item.moisture || 0)
   }));
 
   return (

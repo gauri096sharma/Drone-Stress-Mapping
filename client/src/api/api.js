@@ -7,10 +7,25 @@ const api = axios.create({
   }
 });
 
-export const getRecords = () => api.get('/records');
-export const createRecord = (payload) => api.post('/records', payload);
-export const updateRecord = (id, payload) => api.put(`/records/${id}`, payload);
-export const deleteRecord = (id) => api.delete(`/records/${id}`);
-export const getAnalytics = () => api.get('/analytics/summary');
+export const getRecords = (userId) =>
+  api.get(`/records?userId=${userId}`);
+
+export const createRecord = (payload, userId) =>
+  api.post('/records', {
+    ...payload,
+    userId
+  });
+
+export const updateRecord = (id, payload, userId) =>
+  api.put(`/records/${id}`, {
+    ...payload,
+    userId
+  });
+
+export const deleteRecord = (id) =>
+  api.delete(`/records/${id}`);
+
+export const getAnalytics = () =>
+  api.get('/analytics/summary');
 
 export default api;

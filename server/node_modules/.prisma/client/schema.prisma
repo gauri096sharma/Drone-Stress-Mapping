@@ -27,6 +27,7 @@ model FieldRecord {
   healthScore    Int
   status         String
   notes          String?
+  userId         String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

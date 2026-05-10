@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Records from './pages/Records';
 import Upload from './pages/Upload';
 import Analytics from './pages/Analytics';
+import ImageAnalysis from './pages/ImageAnalysis';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -15,36 +16,14 @@ export default function App() {
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <Routes>
-
-          {/* PUBLIC ROUTES */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
-          {/* PROTECTED ROUTES */}
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/records" element={
-            <ProtectedRoute>
-              <Records />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/upload" element={
-            <ProtectedRoute>
-              <Upload />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/analytics" element={
-            <ProtectedRoute>
-              <Analytics />
-            </ProtectedRoute>
-          } />
-
+          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/records" element={<ProtectedRoute><Records /></ProtectedRoute>} />
+          <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
+          <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+          <Route path="/image-analysis" element={<ProtectedRoute><ImageAnalysis /></ProtectedRoute>} />
         </Routes>
       </main>
     </div>

@@ -41,6 +41,7 @@ export default function Navbar() {
               <NavLink to="/records" className={linkClass}>Records</NavLink>
               <NavLink to="/analytics" className={linkClass}>Analytics</NavLink>
               <NavLink to="/upload" className={linkClass}>Upload</NavLink>
+              <NavLink to="/image-analysis" className={linkClass}>Image Analysis</NavLink>
 
               <button
                 onClick={handleLogout}

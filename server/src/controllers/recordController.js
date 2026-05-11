@@ -4,7 +4,17 @@ import { validateRecordPayload } from '../utils/validateRecord.js';
 
 export async function getRecords(req, res, next) {
   try {
+    const { userId } = req.query;
+
     const records = await prisma.fieldRecord.findMany({
+      where: userId
+        ? {
+            OR: [
+              { userId },
+              { userId: null }
+            ]
+          }
+        : {},
       orderBy: {
         createdAt: 'desc'
       }
@@ -24,6 +34,7 @@ export async function createNewRecord(req, res, next) {
     }
 
     const payload = req.body;
+
     const numericPayload = {
       ...payload,
       ndvi: Number(payload.ndvi),
@@ -58,7 +69,8 @@ export async function createNewRecord(req, res, next) {
         nutrientStress,
         healthScore,
         status,
-        notes: payload.notes || ''
+        notes: payload.notes || '',
+        userId: payload.userId || null
       }
     });
 
@@ -71,12 +83,14 @@ export async function createNewRecord(req, res, next) {
 export async function updateExistingRecord(req, res, next) {
   try {
     const { id } = req.params;
+
     const validationError = validateRecordPayload(req.body);
     if (validationError) {
       return res.status(400).json({ message: validationError });
     }
 
     const payload = req.body;
+
     const numericPayload = {
       ...payload,
       ndvi: Number(payload.ndvi),
@@ -112,7 +126,8 @@ export async function updateExistingRecord(req, res, next) {
         nutrientStress,
         healthScore,
         status,
-        notes: payload.notes || ''
+        notes: payload.notes || '',
+        userId: payload.userId || null
       }
     });
 

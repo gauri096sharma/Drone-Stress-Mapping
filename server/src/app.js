@@ -4,13 +4,33 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import recordRoutes from './routes/recordRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import imageRoutes from './routes/imageRoutes.js';
+import sentinelRoutes from './routes/sentinelRoutes.js';
 import notFound from './middleware/notFound.js';
 import errorHandler from './middleware/errorHandler.js';
 
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://drone-stress-mapping.vercel.app'
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true
+  })
+);
+
 app.use(express.json());
 app.use(morgan('dev'));
 
@@ -24,6 +44,8 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/records', recordRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/images', imageRoutes);
+app.use('/api/sentinel', sentinelRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

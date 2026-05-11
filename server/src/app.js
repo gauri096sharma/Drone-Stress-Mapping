@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import recordRoutes from './routes/recordRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import imageRoutes from './routes/imageRoutes.js';
+import sentinelRoutes from './routes/sentinelRoutes.js';
 import notFound from './middleware/notFound.js';
 import errorHandler from './middleware/errorHandler.js';
 
@@ -44,6 +45,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/records', recordRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/images', imageRoutes);
+app.use('/api/sentinel', sentinelRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

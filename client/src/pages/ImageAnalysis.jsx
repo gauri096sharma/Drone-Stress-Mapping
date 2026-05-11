@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import NDVIHeatmap from '../components/NDVIHeatmap';
 
 function getHealthInterpretation(indices) {
   const ndvi = Number(indices.ndvi);
@@ -220,6 +221,8 @@ export default function ImageAnalysis() {
               {interpretation.recommendation}
             </p>
           </div>
+
+          <NDVIHeatmap ndvi={indices.ndvi} />
         </>
       )}
     </div>

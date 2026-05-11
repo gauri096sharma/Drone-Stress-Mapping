@@ -5,6 +5,7 @@ import Records from './pages/Records';
 import Upload from './pages/Upload';
 import Analytics from './pages/Analytics';
 import ImageAnalysis from './pages/ImageAnalysis';
+import SentinelAnalysis from './pages/SentinelAnalysis';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
           <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
           <Route path="/image-analysis" element={<ProtectedRoute><ImageAnalysis /></ProtectedRoute>} />
+          <Route path="/sentinel-analysis" element={<ProtectedRoute><SentinelAnalysis /></ProtectedRoute>} />
         </Routes>
       </main>
     </div>

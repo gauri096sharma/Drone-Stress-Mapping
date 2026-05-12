@@ -16,6 +16,16 @@ A production-ready precision agriculture platform for monitoring crop health usi
 - Analytics summary
 - Record management
 - Seed data support
+## Features
+
+- Real Sentinel-2 satellite data integration
+- Location search with auto latitude/longitude filling
+- NDVI, NDRE, and GNDVI calculation
+- Multispectral image band upload analysis
+- NDVI heatmap visualization
+- Supabase authentication
+- PostgreSQL production database
+- Production deployment using Vercel and Render
 
 ## Setup
 

@@ -6,9 +6,9 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "seed": "node prisma/seed.js",
-    "postinstall": "prisma generate",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev --name init"
+    "postinstall": "npx prisma generate",
+    "prisma:generate": "npx prisma generate",
+    "prisma:migrate": "npx prisma migrate dev --name init"
   },
   "dependencies": {
     "@google/earthengine": "^1.7.25",
@@ -24,5 +24,8 @@
   "devDependencies": {
     "nodemon": "^3.1.4",
     "prisma": "^5.22.0"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }

@@ -66,6 +66,7 @@ export default function SentinelAnalysis() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+
     setError('');
     setIndices(null);
     setAnalysisLocation('');
@@ -73,9 +74,23 @@ export default function SentinelAnalysis() {
     try {
       setLoading(true);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/sentinel/analyze`, {
+      const rawApiUrl = import.meta.env.VITE_API_URL;
+
+      if (!rawApiUrl) {
+        throw new Error('API URL is missing. Please check VITE_API_URL in Vercel.');
+      }
+
+      const API_BASE = rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl}/api`;
+
+      if (!form.latitude || !form.longitude) {
+        throw new Error('Please provide valid latitude and longitude.');
+      }
+
+      const response = await fetch(`${API_BASE}/sentinel/analyze`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           latitude: Number(form.latitude),
           longitude: Number(form.longitude),
@@ -84,10 +99,23 @@ export default function SentinelAnalysis() {
         })
       });
 
+      if (!response.ok) {
+        let errorMessage = 'Failed to fetch Sentinel-2 data.';
+
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = `Server Error (${response.status})`;
+        }
+
+        throw new Error(errorMessage);
+      }
+
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch Sentinel-2 data.');
+      if (!data.indices) {
+        throw new Error('No vegetation index data returned.');
       }
 
       setIndices(data.indices);
@@ -95,7 +123,8 @@ export default function SentinelAnalysis() {
         `${form.locationName} (${Number(form.latitude).toFixed(4)}, ${Number(form.longitude).toFixed(4)})`
       );
     } catch (err) {
-      setError(err.message || 'Failed to analyze Sentinel-2 data.');
+      console.error('Sentinel Analysis Error:', err);
+      setError(err.message || 'Failed to analyze Sentinel-2 satellite data.');
     } finally {
       setLoading(false);
     }

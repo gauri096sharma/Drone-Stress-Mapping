@@ -6,6 +6,7 @@ import recordRoutes from './routes/recordRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import imageRoutes from './routes/imageRoutes.js';
 import sentinelRoutes from './routes/sentinelRoutes.js';
+import mlRoutes from './routes/mlRoutes.js';
 import notFound from './middleware/notFound.js';
 import errorHandler from './middleware/errorHandler.js';
 
@@ -46,6 +47,7 @@ app.use('/api/records', recordRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/images', imageRoutes);
 app.use('/api/sentinel', sentinelRoutes);
+app.use('/api/ml', mlRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

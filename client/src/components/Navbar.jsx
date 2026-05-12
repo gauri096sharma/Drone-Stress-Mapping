@@ -64,6 +64,10 @@ export default function Navbar() {
                 Sentinel Analysis
               </NavLink>
 
+              <NavLink to="/ml-prediction" className={linkClass}>
+                ML Prediction
+              </NavLink>
+
               <button
                 onClick={handleLogout}
                 className="rounded-xl bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600"

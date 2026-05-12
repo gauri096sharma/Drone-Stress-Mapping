@@ -37,12 +37,25 @@ export default function SentinelAnalysis() {
 
   const [indices, setIndices] = useState(null);
   const [analysisLocation, setAnalysisLocation] = useState('');
+  const [mlResult, setMlResult] = useState(null);
+
   const [loading, setLoading] = useState(false);
+  const [mlLoading, setMlLoading] = useState(false);
   const [error, setError] = useState('');
   const [locationMessage, setLocationMessage] = useState('');
 
   function updateField(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function getApiBase() {
+    const rawApiUrl = import.meta.env.VITE_API_URL;
+
+    if (!rawApiUrl) {
+      throw new Error('API URL is missing. Please check VITE_API_URL in Vercel.');
+    }
+
+    return rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl}/api`;
   }
 
   function handleLocationChange(value) {
@@ -117,18 +130,13 @@ export default function SentinelAnalysis() {
 
     setError('');
     setIndices(null);
+    setMlResult(null);
     setAnalysisLocation('');
 
     try {
       setLoading(true);
 
-      const rawApiUrl = import.meta.env.VITE_API_URL;
-
-      if (!rawApiUrl) {
-        throw new Error('API URL is missing. Please check VITE_API_URL in Vercel.');
-      }
-
-      const API_BASE = rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl}/api`;
+      const API_BASE = getApiBase();
 
       if (!form.latitude || !form.longitude) {
         throw new Error('Please provide valid latitude and longitude.');
@@ -175,6 +183,52 @@ export default function SentinelAnalysis() {
       setError(err.message || 'Failed to analyze Sentinel-2 satellite data.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleMLPrediction() {
+    setError('');
+    setMlResult(null);
+
+    if (!indices) {
+      setError('Please run Sentinel-2 analysis first.');
+      return;
+    }
+
+    try {
+      setMlLoading(true);
+
+      const API_BASE = getApiBase();
+
+      const response = await fetch(`${API_BASE}/ml/predict`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ndvi: Number(indices.ndvi),
+          ndre: Number(indices.ndre),
+          gndvi: Number(indices.gndvi),
+          moisture: 50,
+          temperature: 30,
+          nitrogen: 55,
+          phosphorus: 50,
+          potassium: 55
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'CNN prediction failed.');
+      }
+
+      setMlResult(data);
+    } catch (err) {
+      console.error('CNN Prediction Error:', err);
+      setError(err.message || 'Failed to run CNN prediction.');
+    } finally {
+      setMlLoading(false);
     }
   }
 
@@ -372,6 +426,46 @@ export default function SentinelAnalysis() {
               <p className="text-sm text-slate-500">GNDVI</p>
               <p className="mt-2 text-3xl font-semibold text-lime-600">{indices.gndvi}</p>
             </div>
+          </div>
+
+          <div className="rounded-2xl border bg-white p-6 shadow-sm">
+            <h3 className="text-xl font-semibold">CNN Stress Prediction</h3>
+            <p className="mt-2 text-sm text-slate-500">
+              Uses Sentinel-derived NDVI, NDRE, and GNDVI with field parameter defaults to classify crop stress.
+            </p>
+
+            <button
+              onClick={handleMLPrediction}
+              disabled={mlLoading}
+              className="mt-4 rounded-xl bg-brand-dark px-5 py-3 text-white transition hover:opacity-95 disabled:opacity-60"
+            >
+              {mlLoading ? 'Running CNN Prediction...' : 'Predict Stress with CNN'}
+            </button>
+
+            {mlResult && (
+              <div className="mt-5 rounded-2xl bg-slate-50 p-5">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <p className="text-sm text-slate-500">Predicted Stress Level</p>
+                    <p className="mt-1 text-2xl font-semibold text-slate-900">
+                      {mlResult.stressLevel}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500">Confidence</p>
+                    <p className="mt-1 text-2xl font-semibold text-emerald-600">
+                      {mlResult.confidence}%
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-xl bg-emerald-50 p-4">
+                  <p className="font-semibold text-emerald-800">{mlResult.status}</p>
+                  <p className="mt-2 text-sm text-emerald-700">{mlResult.recommendation}</p>
+                </div>
+              </div>
+            )}
           </div>
 
           <NDVIHeatmap ndvi={indices.ndvi} />

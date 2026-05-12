@@ -6,6 +6,7 @@ import Upload from './pages/Upload';
 import Analytics from './pages/Analytics';
 import ImageAnalysis from './pages/ImageAnalysis';
 import SentinelAnalysis from './pages/SentinelAnalysis';
+import MLPrediction from './pages/MLPrediction';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
           <Route path="/image-analysis" element={<ProtectedRoute><ImageAnalysis /></ProtectedRoute>} />
           <Route path="/sentinel-analysis" element={<ProtectedRoute><SentinelAnalysis /></ProtectedRoute>} />
+          <Route path="/ml-prediction" element={<ProtectedRoute><MLPrediction /></ProtectedRoute>} />
         </Routes>
       </main>
     </div>

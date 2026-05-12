@@ -32,10 +32,14 @@ export default function SentinelAnalysis() {
     endDate: '2024-03-31'
   });
 
+  const [searchLocation, setSearchLocation] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
+
   const [indices, setIndices] = useState(null);
   const [analysisLocation, setAnalysisLocation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [locationMessage, setLocationMessage] = useState('');
 
   function updateField(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -43,6 +47,8 @@ export default function SentinelAnalysis() {
 
   function handleLocationChange(value) {
     setSelectedLocation(value);
+    setError('');
+    setLocationMessage('');
 
     const location = indianLocations.find((item) => item.name === value);
 
@@ -62,6 +68,48 @@ export default function SentinelAnalysis() {
       latitude: location.latitude,
       longitude: location.longitude
     }));
+  }
+
+  async function handleLocationSearch() {
+    setError('');
+    setLocationMessage('');
+
+    if (!searchLocation.trim()) {
+      setError('Please enter a location name to search.');
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+
+      const query = encodeURIComponent(`${searchLocation}, India`);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`
+      );
+
+      const data = await response.json();
+
+      if (!Array.isArray(data) || data.length === 0) {
+        throw new Error('Location not found. Please try a nearby city, district, or state name.');
+      }
+
+      const place = data[0];
+
+      setSelectedLocation('Custom Location');
+
+      setForm((prev) => ({
+        ...prev,
+        locationName: place.display_name,
+        latitude: Number(place.lat).toFixed(6),
+        longitude: Number(place.lon).toFixed(6)
+      }));
+
+      setLocationMessage(`Location found: ${place.display_name}`);
+    } catch (err) {
+      setError(err.message || 'Failed to search location.');
+    } finally {
+      setSearchLoading(false);
+    }
   }
 
   async function handleSubmit(e) {
@@ -144,12 +192,43 @@ export default function SentinelAnalysis() {
         </h2>
 
         <p className="mt-4 max-w-3xl text-slate-300">
-          Select an Indian agricultural region or enter custom coordinates. The system retrieves Sentinel-2 satellite data and calculates NDVI, NDRE, and GNDVI.
+          Select a region, search any Indian location, or enter custom coordinates. The system retrieves Sentinel-2 satellite data and calculates NDVI, NDRE, and GNDVI.
         </p>
       </section>
 
       <div className="rounded-2xl border bg-white p-6 shadow-sm">
         <h3 className="text-xl font-semibold">Satellite Data Input</h3>
+
+        <div className="mt-6 rounded-2xl border bg-slate-50 p-4">
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Search Location
+          </label>
+
+          <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+            <input
+              type="text"
+              value={searchLocation}
+              onChange={(e) => setSearchLocation(e.target.value)}
+              placeholder="Example: Aligarh, Uttar Pradesh"
+              className="w-full rounded-xl border bg-white px-4 py-3 outline-none"
+            />
+
+            <button
+              type="button"
+              onClick={handleLocationSearch}
+              disabled={searchLoading}
+              className="rounded-xl bg-brand-dark px-5 py-3 text-white transition hover:opacity-95 disabled:opacity-60"
+            >
+              {searchLoading ? 'Searching...' : 'Search Location'}
+            </button>
+          </div>
+
+          {locationMessage && (
+            <p className="mt-3 text-sm font-medium text-emerald-600">
+              {locationMessage}
+            </p>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import NDVIHeatmap from '../components/NDVIHeatmap';
+import { useAuth } from '../context/AuthContext';
+import { createRecord } from '../api/api';
 
 function getHealthInterpretation(indices) {
   const ndvi = Number(indices.ndvi);
@@ -36,6 +38,8 @@ function getHealthInterpretation(indices) {
 }
 
 export default function ImageAnalysis() {
+  const { user } = useAuth();
+
   const [files, setFiles] = useState({
     red: null,
     green: null,
@@ -43,9 +47,17 @@ export default function ImageAnalysis() {
     redEdge: null
   });
 
+  const [cropName, setCropName] = useState('Wheat');
+
   const [indices, setIndices] = useState(null);
+  const [mlResult, setMlResult] = useState(null);
+
   const [loading, setLoading] = useState(false);
+  const [mlLoading, setMlLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+
   const [error, setError] = useState('');
+  const [saveMessage, setSaveMessage] = useState('');
 
   function handleFileChange(key, file) {
     setFiles((prev) => ({
@@ -54,10 +66,21 @@ export default function ImageAnalysis() {
     }));
   }
 
+  function getApiBase() {
+    const rawApiUrl = import.meta.env.VITE_API_URL;
+
+    return rawApiUrl.endsWith('/api')
+      ? rawApiUrl
+      : `${rawApiUrl}/api`;
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
+
     setError('');
     setIndices(null);
+    setMlResult(null);
+    setSaveMessage('');
 
     if (!files.red || !files.green || !files.nir || !files.redEdge) {
       setError('Please upload all four band images: Red, Green, NIR, and RedEdge.');
@@ -68,6 +91,7 @@ export default function ImageAnalysis() {
       setLoading(true);
 
       const formData = new FormData();
+
       formData.append('red', files.red);
       formData.append('green', files.green);
       formData.append('nir', files.nir);
@@ -92,6 +116,92 @@ export default function ImageAnalysis() {
     }
   }
 
+  async function handleMLPrediction() {
+    setError('');
+    setMlResult(null);
+
+    if (!indices) {
+      setError('Please calculate multispectral indices first.');
+      return;
+    }
+
+    try {
+      setMlLoading(true);
+
+      const API_BASE = getApiBase();
+
+      const response = await fetch(`${API_BASE}/ml/predict`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ndvi: Number(indices.ndvi),
+          ndre: Number(indices.ndre),
+          gndvi: Number(indices.gndvi),
+          moisture: 50,
+          temperature: 30,
+          nitrogen: 55,
+          phosphorus: 50,
+          potassium: 55
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'CNN prediction failed.');
+      }
+
+      setMlResult(data);
+    } catch (err) {
+      setError(err.message || 'Failed to run CNN prediction.');
+    } finally {
+      setMlLoading(false);
+    }
+  }
+
+  async function handleSaveToRecords() {
+    setError('');
+    setSaveMessage('');
+
+    if (!indices || !mlResult) {
+      setError('Please run CNN prediction before saving.');
+      return;
+    }
+
+    try {
+      setSaveLoading(true);
+
+      await createRecord(
+        {
+          plot: 'Multispectral Image Analysis',
+          crop: cropName,
+          location: 'Image-Based Analysis',
+          capturedAt: new Date().toISOString(),
+          ndvi: Number(indices.ndvi),
+          ndre: Number(indices.ndre),
+          gndvi: Number(indices.gndvi),
+          moisture: 50,
+          temperature: 30,
+          nitrogen: 55,
+          phosphorus: 50,
+          potassium: 55,
+          notes: `Source: Multispectral Image Upload | Crop: ${cropName} | CNN Prediction: ${mlResult.stressLevel} | Confidence: ${mlResult.confidence}% | Recommendation: ${mlResult.recommendation}`
+        },
+        user?.id
+      );
+
+      setSaveMessage(
+        'Image analysis saved successfully. It will now appear in Records, Dashboard, and Analytics.'
+      );
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Failed to save image analysis.');
+    } finally {
+      setSaveLoading(false);
+    }
+  }
+
   const interpretation = indices ? getHealthInterpretation(indices) : null;
 
   return (
@@ -112,11 +222,23 @@ export default function ImageAnalysis() {
 
       <div className="rounded-2xl border bg-white p-6 shadow-sm">
         <h3 className="text-xl font-semibold">Upload Band Images</h3>
-        <p className="mt-2 text-sm text-slate-500">
-          Use separate grayscale or band-extracted images for each multispectral channel.
-        </p>
 
         <form onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Crop Name
+            </label>
+
+            <input
+              type="text"
+              value={cropName}
+              onChange={(e) => setCropName(e.target.value)}
+              placeholder="Example: Wheat, Rice, Sugarcane"
+              className="w-full rounded-xl border px-4 py-3 outline-none"
+              required
+            />
+          </div>
+
           {[
             ['red', 'Red Band Image'],
             ['green', 'Green Band Image'],
@@ -162,9 +284,6 @@ export default function ImageAnalysis() {
               <p className="mt-2 text-3xl font-semibold text-emerald-600">
                 {indices.ndvi}
               </p>
-              <p className="mt-2 text-xs text-slate-500">
-                Indicates vegetation vigor using NIR and Red bands.
-              </p>
             </div>
 
             <div className="rounded-2xl border bg-white p-6 shadow-sm">
@@ -172,18 +291,12 @@ export default function ImageAnalysis() {
               <p className="mt-2 text-3xl font-semibold text-blue-600">
                 {indices.ndre}
               </p>
-              <p className="mt-2 text-xs text-slate-500">
-                Indicates chlorophyll and nitrogen stress using RedEdge band.
-              </p>
             </div>
 
             <div className="rounded-2xl border bg-white p-6 shadow-sm">
               <p className="text-sm text-slate-500">GNDVI</p>
               <p className="mt-2 text-3xl font-semibold text-lime-600">
                 {indices.gndvi}
-              </p>
-              <p className="mt-2 text-xs text-slate-500">
-                Indicates crop greenness and photosynthetic activity.
               </p>
             </div>
           </div>
@@ -197,19 +310,7 @@ export default function ImageAnalysis() {
                 : 'border-rose-200 bg-rose-50'
             }`}
           >
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">
-              Crop Health Interpretation
-            </p>
-
-            <h3
-              className={`mt-3 text-2xl font-semibold ${
-                interpretation.color === 'emerald'
-                  ? 'text-emerald-700'
-                  : interpretation.color === 'amber'
-                  ? 'text-amber-700'
-                  : 'text-rose-700'
-              }`}
-            >
+            <h3 className="text-2xl font-semibold">
               {interpretation.status}
             </h3>
 
@@ -220,6 +321,58 @@ export default function ImageAnalysis() {
             <p className="mt-3 text-slate-700">
               {interpretation.recommendation}
             </p>
+
+            <button
+              onClick={handleMLPrediction}
+              disabled={mlLoading}
+              className="mt-5 rounded-xl bg-brand-dark px-5 py-3 text-white transition hover:opacity-95 disabled:opacity-60"
+            >
+              {mlLoading ? 'Running CNN Prediction...' : 'Predict Stress with CNN'}
+            </button>
+
+            {mlResult && (
+              <div className="mt-5 rounded-2xl bg-white p-5">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <p className="text-sm text-slate-500">Predicted Stress Level</p>
+                    <p className="mt-1 text-2xl font-semibold text-slate-900">
+                      {mlResult.stressLevel}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500">Confidence</p>
+                    <p className="mt-1 text-2xl font-semibold text-emerald-600">
+                      {mlResult.confidence}%
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-xl bg-emerald-50 p-4">
+                  <p className="font-semibold text-emerald-800">
+                    {mlResult.status}
+                  </p>
+
+                  <p className="mt-2 text-sm text-emerald-700">
+                    {mlResult.recommendation}
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleSaveToRecords}
+                  disabled={saveLoading}
+                  className="mt-4 rounded-xl bg-emerald-600 px-5 py-3 text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  {saveLoading ? 'Saving to Records...' : 'Save Analysis to Records'}
+                </button>
+
+                {saveMessage && (
+                  <p className="mt-3 text-sm font-medium text-emerald-600">
+                    {saveMessage}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <NDVIHeatmap ndvi={indices.ndvi} />

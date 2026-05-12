@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import NDVIHeatmap from '../components/NDVIHeatmap';
+import { useAuth } from '../context/AuthContext';
+import { createRecord } from '../api/api';
 
 const indianLocations = [
   { name: 'Delhi NCR', latitude: 28.7041, longitude: 77.1025 },
@@ -22,12 +24,15 @@ const indianLocations = [
 ];
 
 export default function SentinelAnalysis() {
+  const { user } = useAuth();
+
   const [selectedLocation, setSelectedLocation] = useState(indianLocations[0].name);
 
   const [form, setForm] = useState({
     locationName: indianLocations[0].name,
     latitude: indianLocations[0].latitude,
     longitude: indianLocations[0].longitude,
+    cropName: 'Wheat',
     startDate: '2024-01-01',
     endDate: '2024-03-31'
   });
@@ -41,8 +46,11 @@ export default function SentinelAnalysis() {
 
   const [loading, setLoading] = useState(false);
   const [mlLoading, setMlLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+
   const [error, setError] = useState('');
   const [locationMessage, setLocationMessage] = useState('');
+  const [saveMessage, setSaveMessage] = useState('');
 
   function updateField(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -62,6 +70,7 @@ export default function SentinelAnalysis() {
     setSelectedLocation(value);
     setError('');
     setLocationMessage('');
+    setSaveMessage('');
 
     const location = indianLocations.find((item) => item.name === value);
 
@@ -86,6 +95,7 @@ export default function SentinelAnalysis() {
   async function handleLocationSearch() {
     setError('');
     setLocationMessage('');
+    setSaveMessage('');
 
     if (!searchLocation.trim()) {
       setError('Please enter a location name to search.');
@@ -132,6 +142,7 @@ export default function SentinelAnalysis() {
     setIndices(null);
     setMlResult(null);
     setAnalysisLocation('');
+    setSaveMessage('');
 
     try {
       setLoading(true);
@@ -144,9 +155,7 @@ export default function SentinelAnalysis() {
 
       const response = await fetch(`${API_BASE}/sentinel/analyze`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           latitude: Number(form.latitude),
           longitude: Number(form.longitude),
@@ -179,7 +188,6 @@ export default function SentinelAnalysis() {
         `${form.locationName} (${Number(form.latitude).toFixed(4)}, ${Number(form.longitude).toFixed(4)})`
       );
     } catch (err) {
-      console.error('Sentinel Analysis Error:', err);
       setError(err.message || 'Failed to analyze Sentinel-2 satellite data.');
     } finally {
       setLoading(false);
@@ -189,6 +197,7 @@ export default function SentinelAnalysis() {
   async function handleMLPrediction() {
     setError('');
     setMlResult(null);
+    setSaveMessage('');
 
     if (!indices) {
       setError('Please run Sentinel-2 analysis first.');
@@ -202,9 +211,7 @@ export default function SentinelAnalysis() {
 
       const response = await fetch(`${API_BASE}/ml/predict`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ndvi: Number(indices.ndvi),
           ndre: Number(indices.ndre),
@@ -225,10 +232,48 @@ export default function SentinelAnalysis() {
 
       setMlResult(data);
     } catch (err) {
-      console.error('CNN Prediction Error:', err);
       setError(err.message || 'Failed to run CNN prediction.');
     } finally {
       setMlLoading(false);
+    }
+  }
+
+  async function handleSaveToRecords() {
+    setError('');
+    setSaveMessage('');
+
+    if (!indices || !mlResult) {
+      setError('Please run Sentinel analysis and CNN prediction before saving.');
+      return;
+    }
+
+    try {
+      setSaveLoading(true);
+
+      await createRecord(
+        {
+          plot: `Sentinel Analysis - ${form.locationName}`,
+          crop: form.cropName,
+          location: analysisLocation || form.locationName,
+          capturedAt: new Date().toISOString(),
+          ndvi: Number(indices.ndvi),
+          ndre: Number(indices.ndre),
+          gndvi: Number(indices.gndvi),
+          moisture: 50,
+          temperature: 30,
+          nitrogen: 55,
+          phosphorus: 50,
+          potassium: 55,
+          notes: `Source: Sentinel-2 Satellite Analysis | Crop: ${form.cropName} | CNN Prediction: ${mlResult.stressLevel} | Confidence: ${mlResult.confidence}% | Recommendation: ${mlResult.recommendation}`
+        },
+        user?.id
+      );
+
+      setSaveMessage('Analysis saved successfully. It will now appear in Records, Dashboard, and Analytics.');
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Failed to save analysis to records.');
+    } finally {
+      setSaveLoading(false);
     }
   }
 
@@ -354,6 +399,21 @@ export default function SentinelAnalysis() {
 
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
+              Crop Name
+            </label>
+
+            <input
+              type="text"
+              value={form.cropName}
+              onChange={(e) => updateField('cropName', e.target.value)}
+              placeholder="Example: Wheat, Rice, Mango"
+              className="w-full rounded-xl border px-4 py-3 outline-none"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
               Start Date
             </label>
 
@@ -406,6 +466,9 @@ export default function SentinelAnalysis() {
             <h3 className="mt-2 text-xl font-semibold text-slate-900">
               {analysisLocation}
             </h3>
+            <p className="mt-2 text-sm text-slate-500">
+              Crop: {form.cropName}
+            </p>
             <p className="mt-2 text-sm text-slate-500">
               Date Range: {form.startDate} to {form.endDate}
             </p>
@@ -464,6 +527,20 @@ export default function SentinelAnalysis() {
                   <p className="font-semibold text-emerald-800">{mlResult.status}</p>
                   <p className="mt-2 text-sm text-emerald-700">{mlResult.recommendation}</p>
                 </div>
+
+                <button
+                  onClick={handleSaveToRecords}
+                  disabled={saveLoading}
+                  className="mt-4 rounded-xl bg-emerald-600 px-5 py-3 text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  {saveLoading ? 'Saving to Records...' : 'Save Analysis to Records'}
+                </button>
+
+                {saveMessage && (
+                  <p className="mt-3 text-sm font-medium text-emerald-600">
+                    {saveMessage}
+                  </p>
+                )}
               </div>
             )}
           </div>

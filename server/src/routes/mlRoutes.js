@@ -7,7 +7,7 @@ router.post('/predict', async (req, res) => {
   try {
     const inputData = JSON.stringify(req.body);
 
-    const pythonProcess = spawn('python', [
+   const pythonProcess = spawn(process.env.PYTHON_BIN || 'python', [
       'src/ml/stressPredictorApi.py',
       inputData
     ]);

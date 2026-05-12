@@ -13,7 +13,15 @@ const privateKeyPath = path.join(
   '../../config/earth-engine-key.json'
 );
 
-const privateKey = JSON.parse(fs.readFileSync(privateKeyPath, 'utf8'));
+function getEarthEnginePrivateKey() {
+  if (process.env.EARTH_ENGINE_KEY_JSON) {
+    return JSON.parse(process.env.EARTH_ENGINE_KEY_JSON);
+  }
+
+  return JSON.parse(fs.readFileSync(privateKeyPath, 'utf8'));
+}
+
+const privateKey = getEarthEnginePrivateKey();
 
 function initializeEarthEngine() {
   return new Promise((resolve, reject) => {
